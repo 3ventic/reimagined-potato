@@ -17,6 +17,7 @@
 	import type { CarbonTheme } from 'node_modules/carbon-components-svelte/types/Theme/Theme.svelte';
 	import type { Intrinsic, OtherData, RankData } from 'src/ranks';
 	import type { Category, Item, UniqueName } from 'warframe-items';
+	import { masteryRankTitles } from '../models/mastery-ranks';
 
 	export let items: Item[];
 	export let categories: Category[];
@@ -211,19 +212,7 @@
 
 	function requirementTagType(
 		requirement: number
-	):
-		| 'red'
-		| 'magenta'
-		| 'purple'
-		| 'blue'
-		| 'cyan'
-		| 'teal'
-		| 'green'
-		| 'gray'
-		| 'cool-gray'
-		| 'warm-gray'
-		| 'high-contrast'
-		| 'outline' {
+	): 'red' | 'blue' | 'green' | 'cool-gray' | 'warm-gray' {
 		if (mastery >= requirement) {
 			return 'green';
 		}
@@ -231,9 +220,9 @@
 			return 'blue';
 		}
 		if (totalPotentialMastery >= requirement) {
-			return 'cyan';
+			return 'cool-gray';
 		}
-		return 'gray';
+		return 'red';
 	}
 </script>
 
@@ -241,34 +230,39 @@
 
 <section>
 	<header>
-		<div>
-			<h1>Reimagined Potato - The Warframe MR Checklist</h1>
-			<h3>{shownItems.length} / {items.length}</h3>
-			<search>
-				<TextInput placeholder="Search..." bind:value={search} />
-			</search>
-		</div>
+		<h1>A Warframe Mastery Checklist / Planner</h1>
 	</header>
-	<Tabs>
+	<Tabs autoWidth class="fl-center">
 		<Tab label="Overview" />
 		<Tab label="Equipment" />
 		<Tab label="Other Mastery" />
 		<svelte:fragment slot="content">
 			<TabContent>
-				<p>Acquired Mastery: {mastery.toLocaleString()}</p>
-				<p>Owned Potential Mastery: {ownedPotentialMastery.toLocaleString()}</p>
-				<p>Total Potential Mastery: {totalPotentialMastery.toLocaleString()}</p>
+				<h3>Point Totals</h3>
+				<p><strong>Acquired Mastery:</strong> {mastery.toLocaleString()}</p>
+				<p><strong>Owned Potential Mastery:</strong> {ownedPotentialMastery.toLocaleString()}</p>
+				<p><strong>Total Potential Mastery:</strong> {totalPotentialMastery.toLocaleString()}</p>
+				<h3>Mastery Table</h3>
+				<Tag type="green">Achieved</Tag>
+				<Tag type="blue">Requires leveling existing gear</Tag>
+				<Tag type="cool-gray">Requires more gear</Tag>
+				<Tag type="red">Currently unattainable</Tag>
 				<OrderedList>
-					{#each masteryRequirements as requirement}
-						<ListItem
-							><Tag
-								type={requirementTagType(requirement)}
-							/>{requirement.toLocaleString()}</ListItem
-						>
+					{#each masteryRequirements as requirement, i}
+						<ListItem>
+							<Tag type={requirementTagType(requirement)}>{requirement.toLocaleString()}</Tag>
+							{masteryRankTitles[i]}
+						</ListItem>
 					{/each}
 				</OrderedList>
 			</TabContent>
 			<TabContent>
+				<search-area>
+					<h3>{shownItems.length} / {items.length}</h3>
+					<search>
+						<TextInput placeholder="Search..." bind:value={search} />
+					</search>
+				</search-area>
 				<filter-boxes>
 					<filter-box>
 						<Toggle
@@ -326,7 +320,7 @@
 									<NumberInput
 										bind:value={itemData[item.uniqueName].rank}
 										label="Rank"
-										on:blur={saveItemData}
+										on:change={saveItemData}
 										min={0}
 										max={item.maxLevelCap ?? 30}
 										disabled={!itemData[item.uniqueName].owned}
@@ -352,14 +346,14 @@
 				<NumberInput
 					bind:value={otherData.starChartXP}
 					label="Star Chart XP"
-					on:blur={saveOtherData}
+					on:change={saveOtherData}
 					min={0}
 					max={starChartXPMax}
 				/>
 				<NumberInput
 					bind:value={otherData.steelPathXP}
 					label="Steel Path XP"
-					on:blur={saveOtherData}
+					on:change={saveOtherData}
 					min={0}
 					max={steelPathXPMax}
 				/>
@@ -368,7 +362,7 @@
 				<NumberInput
 					bind:value={otherData.plexusRank}
 					label="Rank"
-					on:blur={saveOtherData}
+					on:change={saveOtherData}
 					min={0}
 					max={30}
 				/>
@@ -377,7 +371,7 @@
 					<NumberInput
 						bind:value={otherData.intrinsics[intrinsic]}
 						label={intrinsic}
-						on:blur={saveOtherData}
+						on:change={saveOtherData}
 						min={0}
 						max={10}
 					/>
@@ -393,31 +387,23 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		width: 100%;
+		width: 95%;
+		margin: 0 auto;
 		height: 100%;
 		min-width: 35em;
 	}
 	header {
-		align-content: flex-start;
-		align-items: flex-start;
-		justify-content: space-between;
-		flex-wrap: nowrap;
 		width: 100%;
 		display: flex;
-		flex-direction: column;
-		flex-wrap: wrap;
+		justify-content: center;
 	}
-	header > * {
-		margin-right: 0.5em;
-		margin-left: 0.5em;
-		transition: all 0.5s ease-in-out;
+	header h1 {
+		white-space: nowrap;
 	}
-	header > div {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
+	@media only screen and (max-width: 60em) {
+		header h1 {
+			font-size-adjust: 0.3;
+		}
 	}
 	filter-boxes {
 		padding: 0.5em;
@@ -466,7 +452,19 @@
 	owned-toggle {
 		width: 7.5em;
 	}
+	search-area {
+		display: flex;
+		flex-direction: row;
+	}
 	search {
 		padding: 0 1.5em;
+		flex-grow: 5;
+	}
+	:global(.fl-center) {
+		display: flex;
+		justify-content: center;
+	}
+	:global(.fl-center > *) {
+		flex-grow: 5;
 	}
 </style>
