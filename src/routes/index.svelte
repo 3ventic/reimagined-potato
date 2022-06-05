@@ -185,8 +185,6 @@
 		}, 0) +
 		3000;
 
-	// $: console.log(shownItems);
-
 	function imageUrl(item: Item) {
 		return `https://cdn.warframestat.us/img/${item.imageName}`;
 	}

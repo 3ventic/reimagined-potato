@@ -59,12 +59,6 @@ items = items.filter((item) => {
 	return categories.includes(item.category);
 });
 
-console.log(
-	new Items.default({ category: ['All'] }).filter((item) =>
-		item.name?.toLowerCase().includes('venari')
-	)
-);
-
 export function get() {
 	return {
 		body: { categories, items }
