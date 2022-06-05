@@ -1,24 +1,24 @@
 <script lang="ts">
 	import {
-		Checkbox,
-		ListItem,
-		NumberInput,
-		OrderedList,
-		Tab,
-		TabContent,
-		Tabs,
-		Tag,
-		TextInput,
-		Theme,
-		Tile,
-		Toggle
+	Checkbox,
+	ListItem,
+	NumberInput,
+	OrderedList,
+	Tab,
+	TabContent,
+	Tabs,
+	Tag,
+	TextInput,
+	Theme,
+	Tile,
+	Toggle
 	} from 'carbon-components-svelte';
 	import 'carbon-components-svelte/css/all.css';
 	import type { CarbonTheme } from 'node_modules/carbon-components-svelte/types/Theme/Theme.svelte';
-	import type { Intrinsic, OtherData, RankData } from 'src/ranks';
-	import type { Category, Item, UniqueName } from 'warframe-items';
+	import type { Intrinsic,OtherData,RankData } from 'src/ranks';
+	import type { Category,Item,UniqueName } from 'warframe-items';
 	import { masteryRankTitles } from '../models/mastery-ranks';
-
+	
 	export let items: Item[];
 	export let categories: Category[];
 
@@ -229,6 +229,9 @@
 <section>
 	<header>
 		<h1>A Warframe Mastery Checklist / Planner</h1>
+		<Toggle value={theme==="g100"} on:toggle={(e) => {
+			theme = e.detail.toggled ? "g100" : "g10";
+		}}>Dark Mode</Toggle>
 	</header>
 	<Tabs autoWidth class="fl-center">
 		<Tab label="Overview" />
