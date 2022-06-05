@@ -1,24 +1,25 @@
 <script lang="ts">
 	import {
-	Checkbox,
-	ListItem,
-	NumberInput,
-	OrderedList,
-	Tab,
-	TabContent,
-	Tabs,
-	Tag,
-	TextInput,
-	Theme,
-	Tile,
-	Toggle
+		Checkbox,
+		ListItem,
+		NumberInput,
+		OrderedList,
+		Tab,
+		TabContent,
+		Tabs,
+		Tag,
+		TextInput,
+		Theme,
+		Tile,
+		Toggle
 	} from 'carbon-components-svelte';
 	import 'carbon-components-svelte/css/all.css';
 	import type { CarbonTheme } from 'node_modules/carbon-components-svelte/types/Theme/Theme.svelte';
-	import type { Intrinsic,OtherData,RankData } from 'src/ranks';
-	import type { Category,Item,UniqueName } from 'warframe-items';
+	import type { Intrinsic, OtherData, RankData } from 'src/ranks';
+	import { onMount } from 'svelte';
+	import type { Category, Item } from 'warframe-items';
 	import { masteryRankTitles } from '../models/mastery-ranks';
-	
+
 	export let items: Item[];
 	export let categories: Category[];
 
@@ -27,7 +28,8 @@
 	const starChartXPMax = 27501;
 	const steelPathXPMax = 27501;
 
-	let theme: CarbonTheme = 'g100';
+	let theme: CarbonTheme = 'g10';
+	$: darkTheme = theme === 'g100';
 
 	const checked: Record<Category, boolean> = {
 		All: false,
@@ -57,14 +59,7 @@
 	let search = '';
 	let unowned = false;
 	let unmastered = false;
-
-	const otherDataString =
-		typeof window !== 'undefined' && localStorage?.getItem('reimagined-potato.otherData');
-	const otherDataLoaded = otherDataString ? JSON.parse(otherDataString) : {};
-	if (!Object.hasOwn(otherDataLoaded, 'intrinsics')) {
-		otherDataLoaded.intrinsics = {};
-	}
-	const otherData: OtherData = {
+	let otherData: OtherData = {
 		starChartXP: 0,
 		steelPathXP: 0,
 		intrinsics: {
@@ -74,24 +69,9 @@
 			Engineering: 0,
 			Command: 0
 		},
-		plexusRank: 0,
-		...otherDataLoaded
+		plexusRank: 0
 	};
-	otherData.intrinsics = {
-		Tactical: 0,
-		Piloting: 0,
-		Gunnery: 0,
-		Engineering: 0,
-		Command: 0,
-		...otherDataLoaded.intrinsics
-	};
-
-	const itemDataString =
-		typeof window !== 'undefined' && localStorage?.getItem('reimagined-potato.itemData');
-
-	const itemData: { [key: UniqueName]: RankData } = itemDataString
-		? JSON.parse(itemDataString)
-		: {};
+	let itemData: Record<string, RankData> = {};
 
 	const masteryRequirements: number[] = [];
 	// MR 1-30
@@ -103,22 +83,12 @@
 		masteryRequirements.push(2250000 + i * 147500);
 	}
 
-	items.forEach((item) => {
-		if (!Object.hasOwn(itemData, item.uniqueName)) {
-			itemData[item.uniqueName] = {
-				rank: 0,
-				category: item.category,
-				owned: false
-			};
-		} else {
-			itemData[item.uniqueName].category = item.category;
-			itemData[item.uniqueName].owned = itemData[item.uniqueName].owned ?? false;
-			itemData[item.uniqueName].rank = itemData[item.uniqueName].rank ?? 0;
-		}
-	});
-
 	$: shownItems = items
 		.filter((item) => {
+			if (!Object.hasOwn(itemData, item.uniqueName)) {
+				return false;
+			}
+
 			// search terms
 			if (search.length > 0) {
 				if (
@@ -154,6 +124,9 @@
 
 	$: mastery =
 		items.reduce((acc, item) => {
+			if (!Object.hasOwn(itemData, item.uniqueName)) {
+				return acc;
+			}
 			let rank = itemData[item.uniqueName].rank;
 			return acc + rank * masteryMultiplier(item);
 		}, 0) +
@@ -169,6 +142,9 @@
 	$: ownedPotentialMastery =
 		mastery +
 		items.reduce((acc, item) => {
+			if (!Object.hasOwn(itemData, item.uniqueName)) {
+				return acc;
+			}
 			let max = item.maxLevelCap ?? 30;
 			let rank = itemData[item.uniqueName].rank;
 			return acc + (max - rank) * masteryMultiplier(item);
@@ -222,16 +198,78 @@
 		}
 		return 'red';
 	}
-</script>
 
-<Theme bind:theme persist persistKey="__carbon-theme" />
+	onMount(() => {
+		if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+			theme = 'g100';
+		} else {
+			theme = 'g10';
+		}
+		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+			theme = e.matches ? 'g100' : 'g10';
+		});
+		const otherDataString = localStorage?.getItem('reimagined-potato.otherData');
+		const otherDataLoaded = otherDataString ? JSON.parse(otherDataString) : {};
+		if (!Object.hasOwn(otherDataLoaded, 'intrinsics')) {
+			otherDataLoaded.intrinsics = {};
+		}
+		otherData = {
+			starChartXP: 0,
+			steelPathXP: 0,
+			intrinsics: {
+				Tactical: 0,
+				Piloting: 0,
+				Gunnery: 0,
+				Engineering: 0,
+				Command: 0
+			},
+			plexusRank: 0,
+			...otherDataLoaded
+		};
+		otherData.intrinsics = {
+			Tactical: 0,
+			Piloting: 0,
+			Gunnery: 0,
+			Engineering: 0,
+			Command: 0,
+			...otherDataLoaded.intrinsics
+		};
+
+		const itemDataString = localStorage?.getItem('reimagined-potato.itemData');
+
+		itemData = itemDataString ? JSON.parse(itemDataString) : {};
+
+		items.forEach((item) => {
+			if (!Object.hasOwn(itemData, item.uniqueName)) {
+				itemData[item.uniqueName] = {
+					rank: 0,
+					category: item.category,
+					owned: false
+				};
+			} else {
+				itemData[item.uniqueName].category = item.category;
+				itemData[item.uniqueName].owned = itemData[item.uniqueName].owned ?? false;
+				itemData[item.uniqueName].rank = itemData[item.uniqueName].rank ?? 0;
+			}
+		});
+	});
+</script>
 
 <section>
 	<header>
+		<div />
 		<h1>A Warframe Mastery Checklist / Planner</h1>
-		<Toggle value={theme==="g100"} on:toggle={(e) => {
-			theme = e.detail.toggled ? "g100" : "g10";
-		}}>Dark Mode</Toggle>
+		<div>
+			<Theme
+				bind:theme
+				render="toggle"
+				toggle={{
+					themes: ['g10', 'g100'],
+					labelA: 'Light',
+					labelB: 'Dark'
+				}}
+			/>
+		</div>
 	</header>
 	<Tabs autoWidth class="fl-center">
 		<Tab label="Overview" />
@@ -396,10 +434,13 @@
 	header {
 		width: 100%;
 		display: flex;
-		justify-content: center;
+		justify-content: space-between;
 	}
 	header h1 {
 		white-space: nowrap;
+	}
+	header > div {
+		width: 6em;
 	}
 	@media only screen and (max-width: 60em) {
 		header h1 {
