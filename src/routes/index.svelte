@@ -145,6 +145,9 @@
 			if (!Object.hasOwn(itemData, item.uniqueName)) {
 				return acc;
 			}
+			if (!itemData[item.uniqueName].owned) {
+				return acc;
+			}
 			let max = item.maxLevelCap ?? 30;
 			let rank = itemData[item.uniqueName].rank;
 			return acc + (max - rank) * masteryMultiplier(item);
@@ -184,9 +187,9 @@
 		return multiplier;
 	}
 
-	function requirementTagType(
+	$: requirementTagType = (
 		requirement: number
-	): 'red' | 'blue' | 'green' | 'cool-gray' | 'warm-gray' {
+	): 'red' | 'blue' | 'green' | 'cool-gray' | 'warm-gray' => {
 		if (mastery >= requirement) {
 			return 'green';
 		}
@@ -197,7 +200,7 @@
 			return 'cool-gray';
 		}
 		return 'red';
-	}
+	};
 
 	onMount(() => {
 		if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
