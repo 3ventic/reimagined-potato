@@ -14,14 +14,15 @@
 		Toggle
 	} from 'carbon-components-svelte';
 	import 'carbon-components-svelte/css/all.css';
-	import type { CarbonTheme } from 'node_modules/carbon-components-svelte/types/Theme/Theme.svelte';
-	import type { Intrinsic, OtherData, RankData } from 'src/ranks';
+	import type { CarbonTheme } from 'carbon-components-svelte/types/Theme/Theme.svelte';
 	import { onMount } from 'svelte';
-	import type { Category, Item } from 'warframe-items';
+	import type { Category, Component, Item, MinimalItem } from 'warframe-items';
 	import { masteryRankTitles } from '../models/mastery-ranks';
+	import type { Intrinsic, OtherData, RankData } from '../ranks';
+	import type { PageData } from './$types';
 
-	export let items: Item[];
-	export let categories: Category[];
+	export let data: PageData;
+	$: ({ items, categories } = data);
 
 	const intrinsics: Intrinsic[] = ['Tactical', 'Piloting', 'Gunnery', 'Engineering', 'Command'];
 	const highMultiplierCategories: Category[] = ['Archwing', 'Pets', 'Sentinels', 'Warframes'];
@@ -29,7 +30,6 @@
 	const steelPathXPMax = 27501;
 
 	let theme: CarbonTheme = 'g10';
-	$: darkTheme = theme === 'g100';
 
 	const checked: Record<Category, boolean> = {
 		All: false,
@@ -83,18 +83,29 @@
 		masteryRequirements.push(2250000 + i * 147500);
 	}
 
+	function hasMaxLevelCap(item: MinimalItem): item is MinimalItem & Record<'maxLevelCap', number> {
+		return 'maxLevelCap' in item;
+	}
+
+	function maxLevelCap(item: MinimalItem) {
+		if (hasMaxLevelCap(item)) {
+			return item.maxLevelCap;
+		}
+		return 30;
+	}
+
 	$: shownItems = items
 		.filter((item) => {
-			if (!Object.hasOwn(itemData, item.uniqueName)) {
+			if (!Object.hasOwn(itemData, item.uniqueName ?? '')) {
 				return false;
 			}
 
 			// search terms
 			if (search.length > 0) {
 				if (
-					!item.name.toLowerCase().includes(search.toLowerCase()) &&
-					!item.category.toLowerCase().includes(search.toLowerCase()) &&
-					!item.productCategory?.toLowerCase().includes(search.toLowerCase()) &&
+					!item.name?.toLowerCase().includes(search.toLowerCase()) &&
+					!item.category?.toLowerCase().includes(search.toLowerCase()) &&
+					!(item as Component).productCategory?.toLowerCase().includes(search.toLowerCase()) &&
 					!item.description?.toLowerCase().includes(search.toLowerCase())
 				) {
 					return false;
@@ -102,10 +113,10 @@
 			}
 
 			// other filters
-			if (unowned && itemData[item.uniqueName].owned) {
+			if (unowned && itemData[item.uniqueName ?? ''].owned) {
 				return false;
 			}
-			if (unmastered && itemData[item.uniqueName].rank === (item.maxLevelCap ?? 30)) {
+			if (unmastered && itemData[item.uniqueName ?? ''].rank === maxLevelCap(item)) {
 				return false;
 			}
 			return true;
@@ -120,7 +131,7 @@
 			return 0;
 		});
 
-	$: categoryShownItems = shownItems.filter((item) => checked[item.category]);
+	$: categoryShownItems = shownItems.filter((item) => checked[item.category ?? 'All']);
 
 	$: mastery =
 		items.reduce((acc, item) => {
@@ -148,7 +159,7 @@
 			if (!itemData[item.uniqueName].owned) {
 				return acc;
 			}
-			let max = item.maxLevelCap ?? 30;
+			let max = maxLevelCap(item);
 			let rank = itemData[item.uniqueName].rank;
 			return acc + (max - rank) * masteryMultiplier(item);
 		}, 0);
@@ -160,7 +171,7 @@
 		6000 +
 		1500 * 10 * 5 +
 		items.reduce((acc, item) => {
-			return acc + (item.maxLevelCap ?? 30) * masteryMultiplier(item);
+			return acc + maxLevelCap(item) * masteryMultiplier(item);
 		}, 0) +
 		3000;
 
@@ -179,7 +190,7 @@
 	function masteryMultiplier(item: Item) {
 		let multiplier = 100;
 		if (
-			highMultiplierCategories.includes(item.category) ||
+			highMultiplierCategories.includes(item.category ?? 'All') ||
 			(item.type === 'K-Drive Component' && item.uniqueName.endsWith('Deck'))
 		) {
 			multiplier = 200;
@@ -246,11 +257,11 @@
 			if (!Object.hasOwn(itemData, item.uniqueName)) {
 				itemData[item.uniqueName] = {
 					rank: 0,
-					category: item.category,
+					category: item.category ?? 'All',
 					owned: false
 				};
 			} else {
-				itemData[item.uniqueName].category = item.category;
+				itemData[item.uniqueName].category = item.category ?? 'All';
 				itemData[item.uniqueName].owned = itemData[item.uniqueName].owned ?? false;
 				itemData[item.uniqueName].rank = itemData[item.uniqueName].rank ?? 0;
 			}
@@ -322,12 +333,12 @@
 							bind:toggled={unmastered}
 							labelA={`Unmaxed (${
 								categoryShownItems.filter(
-									(item) => itemData[item.uniqueName].rank < (item.maxLevelCap ?? 30)
+									(item) => itemData[item.uniqueName].rank < maxLevelCap(item)
 								).length
 							})`}
 							labelB={`Unmaxed (${
 								categoryShownItems.filter(
-									(item) => itemData[item.uniqueName].rank < (item.maxLevelCap ?? 30)
+									(item) => itemData[item.uniqueName].rank < maxLevelCap(item)
 								).length
 							})`}
 						/>
@@ -350,7 +361,7 @@
 								<div class="item-in">
 									<img src={imageUrl(item)} alt={`${item.name} image`} loading="lazy" />
 									<h4 class="item-name" title={item.name}>
-										{#if itemData[item.uniqueName].rank === (item.maxLevelCap ?? 30)}
+										{#if itemData[item.uniqueName].rank === maxLevelCap(item)}
 											<Tag size="sm" type={masteryMultiplier(item) > 100 ? 'green' : 'teal'}
 												>Maxed</Tag
 											>
@@ -364,9 +375,9 @@
 										label="Rank"
 										on:change={saveItemData}
 										min={0}
-										max={item.maxLevelCap ?? 30}
+										max={maxLevelCap(item)}
 										disabled={!itemData[item.uniqueName].owned}
-										invalidText={`Number must be between 0 and ${item.maxLevelCap ?? 30}`}
+										invalidText={`Number must be between 0 and ${maxLevelCap(item)}`}
 									/>
 									<owned-toggle>
 										<Toggle
